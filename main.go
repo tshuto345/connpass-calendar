@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	ics "github.com/arran4/golang-ical"
@@ -11,6 +12,11 @@ import (
 )
 
 func main() {
+	http.HandleFunc("/", index)
+	http.ListenAndServe(":8080", nil)
+}
+
+func index(w http.ResponseWriter, r *http.Request) {
 	cli := connpass.NewClient()
 	params, err := connpass.SearchParam(connpass.KeywordOr("go"), connpass.KeywordOr("golang"))
 	if err != nil {
@@ -18,14 +24,14 @@ func main() {
 	}
 
 	ctx := context.Background()
-	r, err := cli.Search(ctx, params)
+	result, err := cli.Search(ctx, params)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	cal := ics.NewCalendar()
 	cal.SetMethod(ics.MethodPublish)
-	for _, e := range r.Events {
+	for _, e := range result.Events {
 		event := cal.AddEvent(fmt.Sprintf("connpass-%d", e.ID))
 		event.SetCreatedTime(e.UpdatedAt)
 		event.SetDtStampTime(time.Now())
@@ -38,5 +44,5 @@ func main() {
 	}
 
 	s := cal.Serialize()
-	fmt.Println(s)
+	fmt.Fprint(w, s)
 }
